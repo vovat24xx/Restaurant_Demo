@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<!--
+  NOIR RESTAURANT — demo restaurant website
+  One file: HTML (structure) + CSS (look) + JavaScript (behaviour).
+  Everything is saved in YOUR browser only (localStorage). No backend, no real orders, no real payments.
+  Search this file for "EDIT ME" to find the easy things to change.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NOIR Restaurant — Dine in the dark</title>
+  <meta name="description" content="NOIR Restaurant: a premium demo restaurant website with an interactive menu, cart, demo checkout and admin dashboard.">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Fonts load from Google Fonts. If offline, the site falls back to Georgia / system fonts. -->
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ==========================================================
+       1. DESIGN TOKENS — EDIT ME: change colours here
+       ========================================================== */
+    :root {
+      --charcoal: #16161a;        /* main dark background */
+      --charcoal-2: #1f1f25;      /* slightly lighter dark surface */
+      --charcoal-3: #2a2a32;      /* borders on dark */
+      --cream: #f6efe3;           /* light surfaces */
+      --cream-2: #ebe2d1;
+      --ink: #1b1b1f;             /* text on cream */
+      --muted-dark: #a9a499;      /* muted text on dark */
+      --muted-light: #6d675c;     /* muted text on cream */
+      --gold: #c9a24d;            /* accent */
+      --gold-2: #e0bf73;
+      --danger: #b3382c;
+      --success: #2f7d4f;
+      --radius: 14px;
+      --shadow: 0 18px 50px rgba(0,0,0,.35);
+      --font-serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+      --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* ==========================================================
+       2. BASE STYLES
+       ========================================================== */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+    body {
+      margin: 0; background: var(--charcoal); color: #f2ede3;
+      font-family: var(--font-sans); line-height: 1.6; -webkit-font-smoothing: antialiased;
+    }
+    img { max-width: 100%; display: block; }
+    h1, h2, h3 { font-family: var(--font-serif); line-height: 1.1; margin: 0; font-weight: 600; }
+    p { margin: 0; }
+    a { color: var(--gold-2); }
+    [hidden] { display: none !important; }
+    .container { width: min(1200px, 100% - 3rem); margin-inline: auto; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+    /* Visible keyboard focus for everything interactive */
+    :focus-visible { outline: 3px solid var(--gold-2); outline-offset: 3px; border-radius: 6px; }
+
+    .skip-link { position: absolute; left: -999px; top: 0; background: var(--gold); color: #111; padding: .6rem 1rem; z-index: 200; }
+    .skip-link:focus { left: 0; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+      font: 600 .95rem var(--font-sans); letter-spacing: .02em;
+      padding: .85rem 1.5rem; border-radius: 999px; border: 1.5px solid transparent;
+      cursor: pointer; text-decoration: none; transition: transform .2s, background .2s, color .2s, border-color .2s, box-shadow .2s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:active { transform: translateY(0); }
+    .btn-gold { background: var(--gold); color: #15130d; }
+    .btn-gold:hover { background: var(--gold-2); box-shadow: 0 8px 24px rgba(201,162,77,.3); }
+    .btn-outline { border-color: rgba(246,239,227,.45); color: #f6efe3; background: transparent; }
+    .btn-outline:hover { border-color: var(--gold-2); color: var(--gold-2); }
+    .btn-dark { background: var(--charcoal); color: var(--cream); }
+    .btn-dark:hover { background: #000; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-small { padding: .45rem .95rem; font-size: .82rem; }
+    .btn[disabled] { opacity: .5; cursor: not-allowed; transform: none; }
+
+    .eyebrow { color: var(--gold); text-transform: uppercase; letter-spacing: .28em; font-size: .75rem; font-weight: 600; }
+    .section { padding: clamp(4rem, 9vw, 8rem) 0; }
+    .section-head { text-align: center; max-width: 640px; margin: 0 auto 3rem; }
+    .section-head h2 { font-size: clamp(2.2rem, 5vw, 3.6rem); margin-top: .6rem; }
+    .section-head p { color: var(--muted-dark); margin-top: 1rem; }
+
+    /* ==========================================================
+       3. HEADER / NAVIGATION
+       ========================================================== */
+    .site-header {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(22,22,26,.88); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--charcoal-3);
+    }
+    .nav { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 72px; }
+    .logo { display: flex; align-items: center; gap: .7rem; text-decoration: none; color: #fff; }
+    .logo-mark {
+      width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid var(--gold);
+      display: grid; place-items: center; font-family: var(--font-serif); font-size: 1.35rem; color: var(--gold); font-weight: 700;
+    }
+    .logo-text { font-family: var(--font-serif); font-size: 1.6rem; letter-spacing: .22em; font-weight: 600; }
+    .nav-links { display: flex; align-items: center; gap: 2rem; list-style: none; margin: 0; padding: 0; }
+    .nav-links a { color: #e9e3d6; text-decoration: none; font-size: .92rem; font-weight: 500; padding: .3rem 0; border-bottom: 1.5px solid transparent; transition: color .2s, border-color .2s; }
+    .nav-links a:hover { color: var(--gold-2); border-color: var(--gold-2); }
+    .nav-actions { display: flex; align-items: center; gap: .6rem; }
+    .icon-btn {
+      position: relative; background: transparent; color: #f2ede3; border: 1.5px solid var(--charcoal-3);
+      border-radius: 999px; height: 42px; min-width: 42px; padding: 0 .9rem; cursor: pointer; font: 500 .88rem var(--font-sans);
+      display: inline-flex; align-items: center; justify-content: center; gap: .45rem; transition: border-color .2s, color .2s;
+    }
+    .icon-btn:hover { border-color: var(--gold); color: var(--gold-2); }
+    .cart-count { background: var(--gold); color: #111; font-size: .72rem; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px; display: inline-grid; place-items: center; padding: 0 5px; }
+    .menu-toggle { display: none; }
+
+    .mobile-only { display: none; }
+    @media (max-width: 880px) {
+      .mobile-only { display: block; }
+      .nav-links.open { max-height: 420px; }
+      .menu-toggle { display: inline-flex; }
+      .nav-links {
+        position: absolute; left: 0; right: 0; top: 72px; flex-direction: column; gap: 0; align-items: stretch;
+        background: var(--charcoal-2); border-bottom: 1px solid var(--charcoal-3);
+        max-height: 0; overflow: hidden; transition: max-height .3s ease;
+      }
+      .nav-links a { display: block; padding: 1rem 1.5rem; border-bottom: 1px solid var(--charcoal-3); }
+      .hide-mobile { display: none; }
+    }
+
+    /* ==========================================================
+       4. HERO
+       ========================================================== */
+    .hero {
+      min-height: calc(100vh - 72px); min-height: calc(100svh - 72px);
+      display: grid; align-items: center; position: relative; isolation: isolate;
+      background:
+        linear-gradient(100deg, rgba(14,14,17,.92) 0%, rgba(14,14,17,.7) 45%, rgba(14,14,17,.35) 100%),
+        url("https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=2000&q=80") center/cover,
+        radial-gradient(circle at 70% 30%, #3a3022, #16161a 70%);  /* fallback colour if the photo does not load */
+    }
+    .hero-inner { padding: 5rem 0; max-width: 680px; animation: rise .9s ease both; }
+    .hero h1 { font-size: clamp(3rem, 8vw, 6rem); margin: 1rem 0 1.4rem; color: #fff; }
+    .hero h1 em { color: var(--gold-2); font-style: italic; }
+    .hero p.lead { font-size: clamp(1.02rem, 1.6vw, 1.2rem); color: #d9d2c3; max-width: 520px; }
+    .hero-buttons { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2.4rem; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 2.2rem; margin-top: 3.2rem; color: var(--muted-dark); font-size: .85rem; }
+    .hero-meta strong { display: block; color: var(--gold-2); font-family: var(--font-serif); font-size: 1.5rem; font-weight: 600; }
+    @keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+
+    /* ==========================================================
+       5. MENU SECTION (cream surface)
+       ========================================================== */
+    .menu-section { background: var(--cream); color: var(--ink); }
+    .menu-section .section-head p { color: var(--muted-light); }
+    .menu-tools { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; margin-bottom: 2.4rem; }
+    .chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .chip {
+      background: transparent; border: 1.5px solid #cfc4af; color: var(--ink); border-radius: 999px;
+      padding: .5rem 1.15rem; font: 500 .9rem var(--font-sans); cursor: pointer; transition: all .2s;
+    }
+    .chip:hover { border-color: var(--gold); }
+    .chip[aria-pressed="true"] { background: var(--charcoal); color: var(--gold-2); border-color: var(--charcoal); }
+    .search-wrap input {
+      width: min(320px, 100%); padding: .7rem 1.1rem; border-radius: 999px; border: 1.5px solid #cfc4af;
+      background: #fffaf1; font: 400 .95rem var(--font-sans); color: var(--ink);
+    }
+    .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.7rem; }
+    .dish {
+      background: #fffaf1; border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column;
+      box-shadow: 0 6px 24px rgba(40,30,10,.08); transition: transform .3s, box-shadow .3s; animation: rise .6s ease both;
+    }
+    .dish:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(40,30,10,.18); }
+    .dish-img { aspect-ratio: 4/3; overflow: hidden; background: var(--cream-2); }
+    .dish-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s; }
+    .dish:hover .dish-img img { transform: scale(1.06); }
+    .dish-body { padding: 1.3rem 1.4rem 1.5rem; display: flex; flex-direction: column; gap: .5rem; flex: 1; }
+    .dish-cat { font-size: .7rem; text-transform: uppercase; letter-spacing: .2em; color: #9a7a2e; font-weight: 600; }
+    .dish h3 { font-size: 1.55rem; }
+    .dish p { color: var(--muted-light); font-size: .92rem; flex: 1; }
+    .dish-foot { display: flex; justify-content: space-between; align-items: center; margin-top: .8rem; }
+    .price { font-family: var(--font-serif); font-size: 1.6rem; font-weight: 700; }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted-light); grid-column: 1 / -1; }
+    .empty-state strong { display: block; font-family: var(--font-serif); font-size: 1.6rem; color: var(--ink); margin-bottom: .4rem; }
+
+    /* ==========================================================
+       6. ABOUT + CONTACT
+       ========================================================== */
+    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 6vw, 5rem); align-items: center; }
+    .about-img { border-radius: var(--radius); aspect-ratio: 4/5; object-fit: cover; width: 100%; box-shadow: var(--shadow); background: var(--charcoal-2); }
+    .about-text h2 { font-size: clamp(2.2rem, 5vw, 3.6rem); margin: .6rem 0 1.4rem; }
+    .about-text p { color: #cfc8b9; margin-bottom: 1rem; }
+    .about-stats { display: flex; gap: 2.5rem; margin-top: 2rem; }
+    .about-stats strong { display: block; font: 600 2.2rem var(--font-serif); color: var(--gold-2); }
+    .about-stats span { font-size: .82rem; color: var(--muted-dark); }
+
+    .contact { background: var(--charcoal-2); }
+    .contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+    .card { background: var(--charcoal); border: 1px solid var(--charcoal-3); border-radius: var(--radius); padding: 2rem; }
+    .card h3 { font-size: 1.6rem; color: var(--gold-2); margin-bottom: 1rem; }
+    .card p, .card li { color: #cfc8b9; font-size: .95rem; }
+    .hours-list { list-style: none; margin: 0; padding: 0; }
+    .hours-list li { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px dashed var(--charcoal-3); }
+    .hours-list li:last-child { border: 0; }
+    .socials { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
+    .socials a { border: 1px solid var(--charcoal-3); border-radius: 999px; padding: .35rem .9rem; text-decoration: none; font-size: .85rem; color: #e9e3d6; transition: all .2s; }
+    .socials a:hover { border-color: var(--gold); color: var(--gold-2); }
+
+    .site-footer { background: #0f0f12; padding: 3rem 0 2rem; border-top: 1px solid var(--charcoal-3); }
+    .footer-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem; align-items: center; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 1.6rem; list-style: none; margin: 0; padding: 0; }
+    .footer-links a, .footer-links button { color: #cfc8b9; text-decoration: none; font-size: .9rem; background: none; border: 0; cursor: pointer; font-family: inherit; padding: 0; }
+    .footer-links a:hover, .footer-links button:hover { color: var(--gold-2); }
+    .footer-bottom { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--charcoal-3); color: var(--muted-dark); font-size: .8rem; display: flex; flex-wrap: wrap; justify-content: space-between; gap: .6rem; }
+
+    .demo-banner { background: var(--gold); color: #15130d; text-align: center; font-size: .82rem; font-weight: 500; padding: .45rem 1rem; }
+
+    @media (max-width: 800px) { .about-grid { grid-template-columns: 1fr; } .about-img { aspect-ratio: 16/10; } }
+
+    /* ==========================================================
+       7. CART DRAWER + CHECKOUT
+       ========================================================== */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 90; }
+    .overlay.show { opacity: 1; pointer-events: auto; }
+    .drawer {
+      position: fixed; top: 0; right: 0; height: 100%; width: min(460px, 100%); background: var(--cream); color: var(--ink);
+      z-index: 100; transform: translateX(100%); transition: transform .35s cubic-bezier(.2,.8,.2,1);
+      display: flex; flex-direction: column; box-shadow: var(--shadow);
+    }
+    .drawer.open { transform: none; }
+    .drawer-head { display: flex; justify-content: space-between; align-items: center; padding: 1.2rem 1.5rem; border-bottom: 1px solid #d9cfba; }
+    .drawer-head h2 { font-size: 1.9rem; }
+    .drawer-close { background: none; border: 0; font-size: 1.8rem; line-height: 1; cursor: pointer; color: var(--ink); padding: .2rem .6rem; border-radius: 8px; }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 1.2rem 1.5rem; }
+    .drawer-foot { padding: 1.2rem 1.5rem 1.5rem; border-top: 1px solid #d9cfba; background: #fffaf1; }
+    .cart-item { display: grid; grid-template-columns: 70px 1fr auto; gap: .9rem; align-items: center; padding: .9rem 0; border-bottom: 1px solid #e3dac6; }
+    .cart-item img { width: 70px; height: 70px; border-radius: 10px; object-fit: cover; background: var(--cream-2); }
+    .cart-item h4 { margin: 0; font: 600 .98rem var(--font-sans); }
+    .cart-item small { color: var(--muted-light); }
+    .qty { display: inline-flex; align-items: center; gap: .3rem; margin-top: .4rem; }
+    .qty button { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid #cfc4af; background: #fff; cursor: pointer; font-size: 1rem; line-height: 1; }
+    .qty button:hover { border-color: var(--gold); }
+    .qty output { min-width: 26px; text-align: center; font-weight: 600; }
+    .remove-btn { background: none; border: 0; color: var(--danger); cursor: pointer; font: 500 .8rem var(--font-sans); text-decoration: underline; padding: .2rem; }
+    .line-total { font-weight: 600; text-align: right; }
+    .totals { display: grid; gap: .35rem; margin-bottom: 1rem; }
+    .totals div { display: flex; justify-content: space-between; font-size: .95rem; }
+    .totals .grand { font: 700 1.5rem var(--font-serif); border-top: 1px solid #d9cfba; padding-top: .6rem; margin-top: .3rem; }
+    .notice { background: #fff3d6; border: 1px solid #e5c97f; border-radius: 10px; padding: .8rem 1rem; font-size: .85rem; color: #5b4a17; margin-bottom: 1rem; }
+    .notice.danger { background: #fde9e6; border-color: #e5a79f; color: #6e231a; }
+    .notice.ok { background: #e4f3ea; border-color: #9dcdb0; color: #1d4c31; }
+
+    /* Forms (used in checkout and admin) */
+    .field { display: grid; gap: .35rem; margin-bottom: 1rem; }
+    .field label { font-size: .85rem; font-weight: 600; }
+    .field input, .field select, .field textarea {
+      width: 100%; padding: .75rem .9rem; border: 1.5px solid #cfc4af; border-radius: 10px; background: #fff; color: var(--ink); font: 400 .95rem var(--font-sans);
+    }
+    .field textarea { resize: vertical; min-height: 90px; }
+    .field input[aria-invalid="true"], .field textarea[aria-invalid="true"] { border-color: var(--danger); }
+    .error-msg { color: var(--danger); font-size: .8rem; min-height: 1em; }
+    .confirm-box { text-align: center; padding: 1rem 0; }
+    .confirm-box .tick { width: 70px; height: 70px; border-radius: 50%; background: var(--success); color: #fff; display: grid; place-items: center; font-size: 2rem; margin: 0 auto 1rem; }
+    .confirm-box h3 { font-size: 2rem; margin-bottom: .6rem; }
+    .receipt { text-align: left; background: #fff; border: 1px dashed #cfc4af; border-radius: 10px; padding: 1rem; margin: 1rem 0; font-size: .9rem; }
+    .receipt div { display: flex; justify-content: space-between; gap: 1rem; }
+
+    /* Toast messages */
+    .toasts { position: fixed; bottom: 1.2rem; left: 50%; transform: translateX(-50%); z-index: 300; display: grid; gap: .5rem; width: min(420px, calc(100% - 2rem)); pointer-events: none; }
+    .toast { background: var(--charcoal); color: #fff; border-left: 4px solid var(--gold); padding: .8rem 1.1rem; border-radius: 10px; box-shadow: var(--shadow); font-size: .92rem; animation: rise .3s ease both; }
+    .toast.error { border-color: var(--danger); }
+    .toast.success { border-color: #43b072; }
+
+    /* ==========================================================
+       8. ADMIN DASHBOARD
+       ========================================================== */
+    .admin { background: #f1ebdf; color: var(--ink); min-height: 100vh; }
+    .admin-bar { background: var(--charcoal); color: #fff; padding: .9rem 0; border-bottom: 2px solid var(--gold); }
+    .admin-bar .container { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .8rem; }
+    .admin-bar h1 { font-size: 1.6rem; letter-spacing: .08em; }
+    .admin-bar h1 span { color: var(--gold-2); }
+    .admin-main { padding: 2rem 0 4rem; }
+    .login-card { max-width: 440px; margin: 4rem auto; background: #fffaf1; border-radius: var(--radius); padding: 2rem; box-shadow: 0 12px 40px rgba(40,30,10,.15); }
+    .login-card h2 { font-size: 2.2rem; margin-bottom: .6rem; }
+    .tabs { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.6rem; }
+    .tab { background: #fffaf1; border: 1.5px solid #d8cdb5; border-radius: 999px; padding: .55rem 1.2rem; cursor: pointer; font: 500 .9rem var(--font-sans); color: var(--ink); }
+    .tab[aria-selected="true"] { background: var(--charcoal); color: var(--gold-2); border-color: var(--charcoal); }
+    .panel { background: #fffaf1; border-radius: var(--radius); padding: 1.6rem; box-shadow: 0 6px 24px rgba(40,30,10,.07); margin-bottom: 1.5rem; }
+    .panel h2 { font-size: 1.9rem; margin-bottom: 1rem; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat { background: var(--charcoal); color: #fff; border-radius: var(--radius); padding: 1.3rem; }
+    .stat span { color: var(--muted-dark); font-size: .8rem; text-transform: uppercase; letter-spacing: .14em; }
+    .stat strong { display: block; font: 600 2.4rem var(--font-serif); color: var(--gold-2); margin-top: .2rem; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 1.2rem; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .btn-row { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: .5rem; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    th, td { text-align: left; padding: .7rem .6rem; border-bottom: 1px solid #e3dac6; vertical-align: middle; }
+    th { font-size: .75rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted-light); }
+    td img { width: 54px; height: 54px; border-radius: 8px; object-fit: cover; background: var(--cream-2); }
+    .row-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .order-card { border: 1px solid #e3dac6; border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: .9rem; background: #fff; }
+    .order-card header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; margin-bottom: .5rem; }
+    .order-card ul { margin: .4rem 0 0; padding-left: 1.2rem; color: var(--muted-light); }
+    .badge { display: inline-block; background: #fff3d6; border: 1px solid #e5c97f; color: #5b4a17; border-radius: 999px; padding: .1rem .7rem; font-size: .72rem; font-weight: 600; }
+
+    /* Confirmation dialog (used instead of the ugly browser confirm()) */
+    dialog { border: 0; border-radius: var(--radius); padding: 1.6rem; max-width: 440px; width: calc(100% - 2rem); background: #fffaf1; color: var(--ink); box-shadow: var(--shadow); }
+    dialog::backdrop { background: rgba(0,0,0,.6); }
+    dialog h3 { font-size: 1.8rem; margin-bottom: .6rem; }
+    dialog p { color: var(--muted-light); margin-bottom: 1.2rem; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+
+    /* ===== 3D BURGER STORY ===== */
+    .burger-story {
+      height: 380vh;
+      background: #111;
+      color: #fff;
+      position: relative;
+      margin: 4rem 0;
+    }
+
+    .burger-sticky {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 80px;
+      padding: 0 40px;
+    }
+
+    .burger-left {
+      width: 280px;
+      height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 1100px;
+    }
+
+    .burger-3d {
+      position: relative;
+      width: 210px;
+      height: 210px;
+      transform-style: preserve-3d;
+      transform: rotateX(18deg) rotateY(-18deg);
+    }
+
+    .burger-3d .layer {
+      position: absolute;
+      left: 50%;
+      width: 190px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+    }
+
+    .burger-3d .top-bun {
+      bottom: 98px;
+      height: 48px;
+      background: linear-gradient(#f0c48a, #d4a06a);
+      border-radius: 50% 50% 28% 28%;
+      z-index: 6;
+    }
+    .burger-3d .veggies {
+      bottom: 86px;
+      height: 18px;
+      width: 175px;
+      background: linear-gradient(#8bc34a, #558b2f);
+      border-radius: 30px;
+      z-index: 5;
+    }
+    .burger-3d .cheese {
+      bottom: 76px;
+      height: 12px;
+      width: 182px;
+      background: linear-gradient(#ffd54f, #ff8f00);
+      border-radius: 6px;
+      z-index: 4;
+    }
+    .burger-3d .patty {
+      bottom: 50px;
+      height: 28px;
+      background: linear-gradient(#6d4c2f, #3e2723);
+      z-index: 3;
+    }
+    .burger-3d .sauce {
+      bottom: 42px;
+      height: 8px;
+      width: 148px;
+      background: #c62828;
+      border-radius: 20px;
+      z-index: 2;
+    }
+    .burger-3d .bottom-bun {
+      bottom: 10px;
+      height: 34px;
+      background: linear-gradient(#e8b17a, #c68a4e);
+      border-radius: 50% 50% 40% 40%;
+      z-index: 1;
+    }
+
+    .burger-right {
+      width: 300px;
+      height: 260px;
+      position: relative;
+    }
+
+    .burger-right .step {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transform: translateY(40px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .burger-right .step small {
+      color: #c9a227;
+      font-size: 0.85rem;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .burger-right .step h3 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin: 0;
+      line-height: 1.3;
+    }
+
+    .burger-right .step .price {
+      font-size: 1.9rem;
+      color: #e8c547;
+      margin: 14px 0 18px;
+      font-weight: 700;
+    }
+
+    .add-btn {
+      background: #c9a227;
+      color: #111;
+      border: none;
+      padding: 13px 26px;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      width: fit-content;
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 768px) {
+      .burger-sticky {
+        flex-direction: column;
+        gap: 24px;
+        padding: 20px;
+      }
+      .burger-left {
+        width: 220px;
+        height: 220px;
+      }
+      .burger-3d {
+        width: 170px;
+        height: 170px;
+      }
+      .burger-3d .layer {
+        width: 155px;
+      }
+      .burger-right {
+        width: 100%;
+        height: 170px;
+        text-align: center;
+      }
+      .burger-right .step {
+        align-items: center;
+      }
+      .burger-right .step h3 {
+        font-size: 1.45rem;
+      }
+    }
+
+    /* ===== DISH MODAL ===== */
+    .dish-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.35s ease;
+    }
+
+    .dish-modal.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .dish-modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.82);
+      backdrop-filter: blur(8px);
+    }
+
+    .dish-modal-content {
+      position: relative;
+      width: min(900px, 94vw);
+      max-height: 90vh;
+      background: #1a1a1f;
+      border-radius: 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+      transform: scale(0.92);
+      transition: transform 0.4s cubic-bezier(0.34, 1.3, 0.64, 1);
+    }
+
+    .dish-modal.open .dish-modal-content {
+      transform: scale(1);
+    }
+
+    .dish-modal-close {
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      width: 42px;
+      height: 42px;
+      border: none;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      font-size: 26px;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 10;
+      transition: background 0.2s;
+    }
+
+    .dish-modal-close:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .dish-modal-img {
+      background: #111;
+      overflow: hidden;
+    }
+
+    .dish-modal-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .dish-modal-info {
+      padding: 40px 36px;
+      color: #f2ede3;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-cat {
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      color: #c9a24d;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .dish-modal-info h2 {
+      font-family: var(--font-serif);
+      font-size: 2.1rem;
+      margin: 0 0 12px;
+      color: #fff;
+    }
+
+    .modal-desc {
+      color: #b8b0a0;
+      line-height: 1.55;
+      margin-bottom: 24px;
+      font-size: 1rem;
+    }
+
+    .modal-ingredients {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+
+    .modal-ingredients span {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 7px 14px;
+      border-radius: 30px;
+      font-size: 0.88rem;
+      color: #e8e0d0;
+      opacity: 0;
+      transform: translateY(12px);
+    }
+
+    .modal-footer {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .modal-price {
+      font-family: var(--font-serif);
+      font-size: 2rem;
+      font-weight: 700;
+      color: #e0bf73;
+    }
+
+    @media (max-width: 750px) {
+      .dish-modal-content {
+        grid-template-columns: 1fr;
+        max-height: 92vh;
+        overflow-y: auto;
+      }
+      .dish-modal-img {
+        height: 240px;
+      }
+      .dish-modal-info {
+        padding: 28px 22px 36px;
+      }
+      .modal-footer {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .modal-footer .btn {
+        width: 100%;
+      }
+    }
+
+    /* ===== PROFILE / MY ORDERS ===== */
+    .profile-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #e3dac6;
+    }
+
+    .user-order-card {
+      background: #fffaf1;
+      border: 1px solid #e3dac6;
+      border-radius: 14px;
+      padding: 1.1rem 1.2rem;
+      margin-bottom: 1rem;
+    }
+
+    .user-order-card header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.6rem;
+    }
+
+    .user-order-card header strong { font-size: 0.95rem; }
+    .user-order-card .order-date { font-size: 0.82rem; color: var(--muted-light); }
+
+    .user-order-card ul {
+      list-style: none;
+      padding: 0;
+      margin: 0.5rem 0;
+      font-size: 0.9rem;
+    }
+
+    .user-order-card ul li {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.25rem 0;
+    }
+
+    .user-order-card .order-total {
+      text-align: right;
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px dashed #d9cfba;
+    }
+
+    .status-badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .status-new { background: #fff3d6; color: #8a6d1d; }
+    .status-preparing { background: #e3f0ff; color: #1a4a8a; }
+    .status-delivered { background: #e4f3ea; color: #1d4c31; }
+    .status-cancelled { background: #fde9e6; color: #6e231a; }
+    .order-actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ===== ADMIN POLISH ===== */
+    .order-card {
+      background: #fff;
+      border: 1px solid #e8e0d0;
+      border-radius: 16px;
+      padding: 1.4rem 1.5rem;
+      margin-bottom: 1.2rem;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.04);
+      transition: box-shadow 0.25s;
+    }
+
+    .order-card:hover {
+      box-shadow: 0 8px 28px rgba(0,0,0,0.08);
+    }
+
+    .order-card header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .order-card header strong {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .order-card .badge {
+      background: #f0e6c8;
+      color: #7a6520;
+      font-size: 0.7rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      margin-left: 0.4rem;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      letter-spacing: 0.04em;
+    }
+
+    .status-new { background: #fff3d6; color: #8a6d1d; }
+    .status-preparing { background: #e0efff; color: #1a4a8a; }
+    .status-delivered { background: #e1f5e8; color: #1a5c32; }
+    .status-cancelled { background: #fde8e6; color: #8a2a1f; }
+
+    .order-actions {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px dashed #e0d6c2;
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .order-actions .btn {
+      font-size: 0.8rem;
+      padding: 0.4rem 0.9rem;
+    }
+
+    /* Кращий вигляд вкладок адмінки */
+    .tab {
+      transition: all 0.2s;
+    }
+
+    .tab[aria-selected="true"] {
+      background: var(--charcoal) !important;
+      color: var(--gold-2) !important;
+    }
+  </style>
+</head>
+
+<body>
+
+  <a href="#main" class="skip-link">Skip to content</a>
+
+  <!-- ==========================================================
+       PUBLIC WEBSITE
+       ========================================================== -->
+  <div id="site">
+    <div class="demo-banner">Portfolio demo — no real orders are sent and no payments are processed.</div>
+
+    <header class="site-header">
+      <div class="container nav">
+        <a href="#home" class="logo" aria-label="Restaurant home">
+          <span class="logo-mark" id="logoMark" aria-hidden="true">N</span>
+          <span class="logo-text" data-bind="name">NOIR</span>
+        </a>
+
+        <ul class="nav-links" id="navLinks">
+          <li><a href="#home">Home</a></li>
+          <li><a href="#menu">Menu</a></li>
+          <li><a href="#about">About</a></li>
+          <li><a href="#contact">Contact</a></li>
+          <!-- These two only appear inside the mobile menu -->
+          <li class="mobile-only"><a href="#menu" style="color:var(--gold-2);font-weight:600">Order Now</a></li>
+          <li class="mobile-only"><a href="#admin">Admin</a></li>
+        </ul>
+
+        <div class="nav-actions">
+          <button class="icon-btn" id="openProfileBtn" aria-label="My Orders">
+            My Orders
+          </button>
+
+          <button class="icon-btn" id="openCartBtn" aria-label="Open cart">
+            <span aria-hidden="true">🛒</span>
+            <span class="cart-count" id="cartCount">0</span>
+          </button>
+
+          <button class="icon-btn hide-mobile" id="adminBtn">Admin</button>
+
+          <button class="icon-btn menu-toggle" id="menuToggle" aria-label="Menu" aria-expanded="false">
+            ☰
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- HERO -->
+      <section class="hero" id="home" aria-labelledby="heroTitle">
+        <div class="container">
+          <div class="hero-inner">
+            <span class="eyebrow">Fine dining &amp; delivery</span>
+            <h1 id="heroTitle" data-bind="headline">Dine in the dark. Taste in colour.</h1>
+            <p class="lead" data-bind="description">Seasonal ingredients, wood-fired heat and a candlelit room. Order online or reserve an evening you will remember.</p>
+            <div class="hero-buttons">
+              <a href="#menu" class="btn btn-gold">View Menu</a>
+              <a href="#menu" class="btn btn-outline" id="heroOrder">Order Online</a>
+            </div>
+            <div class="hero-meta">
+              <div><strong>12+</strong>Signature dishes</div>
+              <div><strong>Daily</strong>Fresh preparation</div>
+              <div><strong>30 min</strong>Typical delivery</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MENU -->
+      <section class="section menu-section" id="menu" aria-labelledby="menuTitle">
+        <div class="container">
+          <div class="section-head">
+            <span class="eyebrow">Our menu</span>
+            <h2 id="menuTitle">Crafted to be shared</h2>
+            <p>Pick a category, search for a favourite, and add it to your cart.</p>
+          </div>
+          <div class="menu-tools">
+            <div class="chips" id="chips" role="group" aria-label="Filter by category"></div>
+            <div class="search-wrap">
+              <label for="searchInput" class="sr-only">Search dishes by name</label>
+              <input type="search" id="searchInput" placeholder="Search dishes…" autocomplete="off">
+            </div>
+          </div>
+          <div class="menu-grid" id="menuGrid" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- ABOUT -->
+      <section class="section" id="about" aria-labelledby="aboutTitle">
+        <div class="container about-grid">
+          <img class="about-img" id="aboutImg" alt="Chef plating a dish in the restaurant kitchen"
+               src="https://images.unsplash.com/photo-1577219491135-ce391730fb2c?auto=format&fit=crop&w=1000&q=80">
+          <div class="about-text">
+            <span class="eyebrow">Our story</span>
+            <h2 id="aboutTitle">Where darkness meets flavour</h2>
+            <p data-bind="about">NOIR began with a simple idea: great food deserves a quiet, beautiful room. Our kitchen cooks over open flame, builds sauces from scratch and changes the menu with the seasons.</p>
+            <p>Whether you dine with us or order at home, every plate leaves the kitchen the same way: carefully, and with intention.</p>
+            <div class="about-stats">
+              <div><strong>2015</strong><span>Established</span></div>
+              <div><strong>4.9★</strong><span>Sample rating</span></div>
+              <div><strong>100%</strong><span>Made fresh</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONTACT -->
+      <section class="section contact" id="contact" aria-labelledby="contactTitle">
+        <div class="container">
+          <div class="section-head">
+            <span class="eyebrow">Visit us</span>
+            <h2 id="contactTitle">Find your table</h2>
+          </div>
+          <div class="contact-grid">
+            <div class="card">
+              <h3>Opening hours</h3>
+              <ul class="hours-list" id="hoursList"></ul>
+            </div>
+            <div class="card">
+              <h3>Contact</h3>
+              <p><strong>Address</strong><br><span data-bind="address"></span></p>
+              <p style="margin-top:.8rem"><strong>Phone</strong><br><span data-bind="phone"></span></p>
+              <p style="margin-top:.8rem"><strong>Email</strong><br><span data-bind="email"></span></p>
+            </div>
+            <div class="card">
+              <h3>Follow us</h3>
+              <p>Social links are placeholders. Replace them with your real profiles.</p>
+              <!-- EDIT ME: replace the # with your real social media links -->
+              <div class="socials">
+                <a href="#contact" aria-label="Instagram (placeholder)">Instagram</a>
+                <a href="#contact" aria-label="Facebook (placeholder)">Facebook</a>
+                <a href="#contact" aria-label="TikTok (placeholder)">TikTok</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-top">
+          <a href="#home" class="logo"><span class="logo-mark" aria-hidden="true">N</span><span class="logo-text" data-bind="name">NOIR</span></a>
+          <ul class="footer-links">
+            <li><a href="#home">Home</a></li>
+            <li><a href="#menu">Menu</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#contact">Contact</a></li>
+            <li><button type="button" id="footerAdmin">Admin</button></li>
+          </ul>
+        </div>
+        <div class="footer-bottom">
+          <span>© <span id="year"></span> <span data-bind="name">NOIR</span>. Demo project, not a real restaurant.</span>
+          <span>Photos: Unsplash. Built with HTML, CSS &amp; JavaScript.</span>
+        </div>
+      </div>
+    </footer>
+
+    <!-- CART DRAWER (3 steps: cart → checkout → confirmation) -->
+    <div class="overlay" id="overlay"></div>
+    <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" aria-hidden="true">
+      <div class="drawer-head">
+        <h2 id="drawerTitle">Your cart</h2>
+        <button class="drawer-close" id="closeCartBtn" aria-label="Close cart">×</button>
+      </div>
+
+      <!-- Step 1: cart -->
+      <div id="stepCart" style="display:flex;flex-direction:column;flex:1;min-height:0">
+        <div class="drawer-body" id="cartBody"></div>
+        <div class="drawer-foot" id="cartFoot">
+          <div class="totals">
+            <div><span>Subtotal</span><span id="subtotal">€0.00</span></div>
+            <div><span>Delivery</span><span id="delivery">€0.00</span></div>
+            <div class="grand"><span>Total</span><span id="total">€0.00</span></div>
+          </div>
+          <div class="btn-row" style="margin:0">
+            <button class="btn btn-dark" id="checkoutBtn">Go to checkout</button>
+            <button class="btn btn-outline" style="color:var(--ink);border-color:#cfc4af" id="clearCartBtn">Clear cart</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: checkout -->
+      <form id="stepCheckout" novalidate hidden style="flex-direction:column;flex:1;min-height:0">
+        <div class="drawer-body">
+          <div class="notice"><strong>Demo checkout.</strong> No real order is sent and no payment is processed. Your details are only saved in this browser.</div>
+          <div class="field">
+            <label for="cName">Full name</label>
+            <input id="cName" name="name" type="text" autocomplete="name" aria-describedby="cNameErr">
+            <div class="error-msg" id="cNameErr" role="alert"></div>
+          </div>
+          <div class="field">
+            <label for="cPhone">Phone number</label>
+            <input id="cPhone" name="phone" type="tel" autocomplete="tel" placeholder="+49 170 0000000" aria-describedby="cPhoneErr">
+            <div class="error-msg" id="cPhoneErr" role="alert"></div>
+          </div>
+          <div class="field">
+            <label for="cAddress">Delivery address</label>
+            <textarea id="cAddress" name="address" autocomplete="street-address" aria-describedby="cAddressErr"></textarea>
+            <div class="error-msg" id="cAddressErr" role="alert"></div>
+          </div>
+          <div class="totals">
+            <div><span>Subtotal</span><span class="mirror-subtotal"></span></div>
+            <div><span>Delivery</span><span class="mirror-delivery"></span></div>
+            <div class="grand"><span>Total</span><span class="mirror-total"></span></div>
+          </div>
+        </div>
+        <div class="drawer-foot">
+          <div class="btn-row" style="margin:0">
+            <button type="submit" class="btn btn-dark">Place demo order</button>
+            <button type="button" class="btn btn-outline" style="color:var(--ink);border-color:#cfc4af" id="backToCartBtn">Back</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Step 3: confirmation -->
+      <div id="stepConfirm" hidden style="flex-direction:column;flex:1;min-height:0">
+        <div class="drawer-body" id="confirmBody"></div>
+        <div class="drawer-foot"><button class="btn btn-dark" id="doneBtn">Back to menu</button></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ==========================================================
+       ADMIN DASHBOARD (hidden until the Admin button is used)
+       ========================================================== -->
+  <div id="admin" class="admin" hidden>
+    <div class="admin-bar">
+      <div class="container">
+        <h1>NOIR <span>Admin</span></h1>
+        <div class="btn-row" style="margin:0">
+          <button class="btn btn-outline btn-small" id="backToSiteBtn">← View website</button>
+          <button class="btn btn-gold btn-small" id="logoutBtn" hidden>Log out</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="container admin-main">
+      <!-- Login -->
+      <div class="login-card" id="loginCard">
+        <h2>Admin login</h2>
+        <div class="notice danger"><strong>Not secure.</strong> This is a demo login that runs only in your browser. Anyone can read the password in the page source. Never use this method on a real website. A real restaurant needs a backend with proper authentication.</div>
+        <div class="notice">Demo password: <strong id="demoPw"></strong></div>
+        <form id="loginForm" novalidate>
+          <div class="field">
+            <label for="adminPw">Password</label>
+            <input type="password" id="adminPw" autocomplete="off" aria-describedby="loginErr">
+            <div class="error-msg" id="loginErr" role="alert"></div>
+          </div>
+          <button class="btn btn-dark" type="submit">Log in</button>
+        </form>
+      </div>
+
+      <!-- Dashboard -->
+      <div id="dashboard" hidden>
+        <div class="notice">All changes and orders are saved only in <strong>this browser</strong> on <strong>this device</strong>. They do not sync to other devices or visitors.</div>
+        <div class="tabs" role="tablist" aria-label="Admin sections">
+          <button class="tab" role="tab" data-tab="overview" aria-selected="true">Overview</button>
+          <button class="tab" role="tab" data-tab="items" aria-selected="false">Menu items</button>
+          <button class="tab" role="tab" data-tab="info" aria-selected="false">Restaurant info</button>
+          <button class="tab" role="tab" data-tab="orders" aria-selected="false">Orders</button>
+          <button class="tab" role="tab" data-tab="data" aria-selected="false">Demo data</button>
+        </div>
+
+        <!-- Overview -->
+        <section data-panel="overview" role="tabpanel">
+          <div class="stats" id="statsBox"></div>
+          <div class="panel">
+            <h2>Latest orders</h2>
+            <div id="latestOrders"></div>
+          </div>
+        </section>
+
+        <!-- Menu items -->
+        <section data-panel="items" role="tabpanel" hidden>
+          <div class="panel">
+            <h2 id="itemFormTitle">Add a menu item</h2>
+            <form id="itemForm" novalidate>
+              <input type="hidden" id="iId">
+              <div class="form-grid">
+                <div class="field"><label for="iName">Name</label><input id="iName" type="text" maxlength="60"></div>
+                <div class="field"><label for="iCat">Category</label>
+                  <select id="iCat"></select>
+                </div>
+                <div class="field"><label for="iPrice">Price (€)</label><input id="iPrice" type="number" step="0.01" min="0.01" inputmode="decimal"></div>
+                <div class="field"><label for="iImg">Image URL</label><input id="iImg" type="url" placeholder="https://…"></div>
+                <div class="field full"><label for="iDesc">Description</label><textarea id="iDesc" maxlength="220"></textarea></div>
+              </div>
+              <div class="error-msg" id="itemErr" role="alert"></div>
+              <div class="btn-row">
+                <button class="btn btn-dark" type="submit" id="itemSubmit">Add item</button>
+                <button class="btn btn-outline" type="button" id="itemCancel" style="color:var(--ink);border-color:#cfc4af" hidden>Cancel edit</button>
+              </div>
+            </form>
+          </div>
+          <div class="panel">
+            <h2>All items</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Actions</th></tr></thead>
+                <tbody id="itemsTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Restaurant info -->
+        <section data-panel="info" role="tabpanel" hidden>
+          <div class="panel">
+            <h2>Restaurant information</h2>
+            <form id="infoForm" novalidate>
+              <div class="form-grid">
+                <div class="field"><label for="sName">Restaurant name</label><input id="sName" type="text" maxlength="30"></div>
+                <div class="field"><label for="sPhone">Phone</label><input id="sPhone" type="text"></div>
+                <div class="field"><label for="sEmail">Email</label><input id="sEmail" type="email"></div>
+                <div class="field"><label for="sAddress">Address</label><input id="sAddress" type="text"></div>
+                <div class="field full"><label for="sHeadline">Headline (hero title)</label><input id="sHeadline" type="text" maxlength="80"></div>
+                <div class="field full"><label for="sDesc">Hero description</label><textarea id="sDesc" maxlength="260"></textarea></div>
+                <div class="field full"><label for="sAbout">About text</label><textarea id="sAbout" maxlength="600"></textarea></div>
+                <div class="field full">
+                  <label for="sHours">Opening hours (one per line, format: Day | Time)</label>
+                  <textarea id="sHours" placeholder="Mon–Thu | 12:00 – 22:00"></textarea>
+                </div>
+              </div>
+              <div class="error-msg" id="infoErr" role="alert"></div>
+              <div class="btn-row"><button class="btn btn-dark" type="submit">Save information</button></div>
+            </form>
+          </div>
+        </section>
+
+        <!-- Orders -->
+        <section data-panel="orders" role="tabpanel" hidden>
+          <div class="panel">
+            <h2>Demo orders</h2>
+            <div id="ordersList"></div>
+          </div>
+        </section>
+
+        <!-- Demo data -->
+        <section data-panel="data" role="tabpanel" hidden>
+          <div class="panel">
+            <h2>Reset demo data</h2>
+            <p style="color:var(--muted-light);margin-bottom:1rem">This restores the original menu and restaurant information and deletes all saved demo orders and the cart in this browser.</p>
+            <button class="btn btn-danger" id="resetBtn">Reset demo data</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmation dialog (re-used for delete + reset) -->
+  <dialog id="confirmDialog" aria-labelledby="dlgTitle">
+    <h3 id="dlgTitle">Are you sure?</h3>
+    <p id="dlgText"></p>
+    <div class="btn-row" style="margin:0">
+      <button class="btn btn-danger" id="dlgYes">Yes, continue</button>
+      <button class="btn btn-outline" id="dlgNo" style="color:var(--ink);border-color:#cfc4af">Cancel</button>
+    </div>
+  </dialog>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script>
+    /* ==========================================================
+       JAVASCRIPT — everything the page does
+       ========================================================== */
+    (function () {
+      "use strict";
+
+      /* ---------- 1. SETTINGS you can edit ---------- */
+      var ADMIN_PASSWORD = "admin123";   // EDIT ME: demo-only password (NOT secure)
+      var CURRENCY = "€";                // EDIT ME: currency symbol
+      var DELIVERY_FEE = 3.5;            // EDIT ME: flat delivery fee (set 0 for free delivery)
+      var FREE_DELIVERY_OVER = 40;       // EDIT ME: orders above this amount get free delivery
+      var CATEGORIES = ["Burgers", "Pizza", "Pasta", "Drinks", "Desserts"];
+
+      /* localStorage keys (all start with "noir_" so they never clash with other sites) */
+      var KEYS = { settings: "noir_settings", menu: "noir_menu", cart: "noir_cart", orders: "noir_orders" };
+
+      /* ---------- 2. DEFAULT DATA ---------- */
+      var DEFAULT_SETTINGS = {
+        name: "NOIR",
+        headline: "Dine in the dark. Taste in colour.",
+        description: "Seasonal ingredients, wood-fired heat and a candlelit room. Order online or reserve an evening you will remember.",
+        about: "NOIR began with a simple idea: great food deserves a quiet, beautiful room. Our kitchen cooks over open flame, builds sauces from scratch and changes the menu with the seasons.",
+        address: "123 Example Street, 00000 Your City",
+        phone: "+00 000 000 0000",
+        email: "hello@example.com",
+        hours: "Mon–Thu | 12:00 – 22:00\nFri–Sat | 12:00 – 23:30\nSunday | 13:00 – 21:00"
+      };
+
+      // EDIT ME: sample menu. id must be unique. price is a number. img can be any image URL.
+      function u(id) { return "https://images.unsplash.com/photo-" + id + "?auto=format&fit=crop&w=800&q=75"; }
+      var DEFAULT_MENU = [
+        { id: "b1", cat: "Burgers", name: "Noir Classic Burger", price: 14.5, desc: "Dry-aged beef patty, aged cheddar, pickles, house sauce, brioche bun.", img: u("1568901346375-23c9450c58cd") },
+        { id: "b2", cat: "Burgers", name: "Smoked Truffle Burger", price: 17.9, desc: "Beef patty, truffle mayo, caramelised onion, smoked gouda, rocket.", img: u("1550547660-d9450f859349") },
+        { id: "b3", cat: "Burgers", name: "Crispy Chicken Burger", price: 13.9, desc: "Buttermilk fried chicken, slaw, chilli honey, toasted bun.", img: u("1606755962773-d324e0a13086") },
+        { id: "p1", cat: "Pizza", name: "Margherita Fiore", price: 12.5, desc: "San Marzano tomato, fior di latte, basil, olive oil on a 48h dough.", img: u("1574071318508-1cdbab80d002") },
+        { id: "p2", cat: "Pizza", name: "Diavola Nera", price: 15.0, desc: "Spicy salami, chilli oil, mozzarella, black olives, oregano.", img: u("1513104890138-7c749659a591") },
+        { id: "p3", cat: "Pizza", name: "Funghi Bianca", price: 15.5, desc: "Cream base, wild mushrooms, thyme, mozzarella, parmesan.", img: u("1565299624946-b28f40a0ae38") },
+        { id: "pa1", cat: "Pasta", name: "Tagliatelle al Ragù", price: 16.5, desc: "Slow-cooked beef and pork ragù, fresh egg tagliatelle, parmesan.", img: u("1621996346565-e3dbc646d9a9") },
+        { id: "pa2", cat: "Pasta", name: "Spaghetti Nero di Seppia", price: 18.5, desc: "Squid-ink spaghetti, garlic, chilli, cherry tomatoes, parsley.", img: u("1473093295043-cdd812d0e601") },
+        { id: "d1", cat: "Drinks", name: "Smoked Old Fashioned", price: 11.0, desc: "Bourbon, bitters, demerara and a touch of oak smoke.", img: u("1514362545857-3bc16c4c7d1b") },
+        { id: "d2", cat: "Drinks", name: "Sparkling Lemonade", price: 4.5, desc: "Fresh lemon, mint and sparkling water. Non-alcoholic.", img: u("1621263764928-df1444c5e859") },
+        { id: "ds1", cat: "Desserts", name: "Dark Chocolate Fondant", price: 9.5, desc: "Warm molten chocolate cake with vanilla bean ice cream.", img: u("1624353365286-3f8d62daad51") },
+        { id: "ds2", cat: "Desserts", name: "Classic Tiramisu", price: 8.5, desc: "Mascarpone cream, espresso-soaked savoiardi, cocoa.", img: u("1571877227200-a0d98ea607e9") }
+      ];
+
+      /* ---------- 3. SMALL HELPERS ---------- */
+      function $(sel, root) { return (root || document).querySelector(sel); }
+      function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+      function money(n) { return CURRENCY + Number(n).toFixed(2); }
+      function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+      // Escape text before putting it into HTML so nobody can inject code through the admin form.
+      function esc(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+        });
+      }
+
+      // Safe localStorage wrappers: the site keeps working (without saving) if storage is blocked.
+      function load(key, fallback) {
+        try {
+          var raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : clone(fallback);
+        } catch (e) { return clone(fallback); }
+      }
+      var storageWarned = false;
+      function save(key, value) {
+        try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+        catch (e) {
+          if (!storageWarned) { storageWarned = true; toast("Your browser blocked saving, so changes will be lost on reload.", "error"); }
+          return false;
+        }
+      }
+
+      // Fallback picture (a dark gold tile with the dish name) when an image URL fails to load.
+      function fallbackImg(label) {
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2a32"/><stop offset="1" stop-color="#4a3b1c"/></linearGradient></defs><rect width="800" height="600" fill="url(#g)"/><text x="400" y="320" font-family="Georgia,serif" font-size="44" fill="#e0bf73" text-anchor="middle">' + esc(label || "NOIR") + '</text></svg>';
+        return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+      }
+      // Listen for ANY image error on the page (error events don't bubble, so use capture mode).
+      document.addEventListener("error", function (e) {
+        var t = e.target;
+        if (t && t.tagName === "IMG" && !t.dataset.fb) {
+          t.dataset.fb = "1";
+          t.src = fallbackImg(t.getAttribute("data-label") || t.alt);
+        }
+      }, true);
+
+      function toast(msg, type) {
+        var el = document.createElement("div");
+        el.className = "toast " + (type || "");
+        el.textContent = msg;
+        $("#toasts").appendChild(el);
+        setTimeout(function () { el.remove(); }, 3500);
+      }
+
+      /* ---------- 4. APP STATE ---------- */
+      var settings = Object.assign({}, DEFAULT_SETTINGS, load(KEYS.settings, DEFAULT_SETTINGS));
+      var menu = load(KEYS.menu, DEFAULT_MENU);
+      var cart = load(KEYS.cart, []);     // [{id, qty}]
+      var orders = load(KEYS.orders, []);
+      var activeCat = "All";
+      var searchTerm = "";
+      if (!Array.isArray(menu)) menu = clone(DEFAULT_MENU);
+      if (!Array.isArray(cart)) cart = [];
+      if (!Array.isArray(orders)) orders = [];
+
+      function findItem(id) { return menu.filter(function (m) { return m.id === id; })[0]; }
+
+      /* ---------- 5. PUBLIC SITE: texts from settings ---------- */
+      function applySettings() {
+        $$("[data-bind]").forEach(function (el) {
+          var key = el.getAttribute("data-bind");
+          if (settings[key] !== undefined) el.textContent = settings[key];
+        });
+        $("#logoMark").textContent = (settings.name || "N").trim().charAt(0).toUpperCase();
+        $$(".logo-mark").forEach(function (m) { m.textContent = (settings.name || "N").trim().charAt(0).toUpperCase(); });
+        document.title = settings.name + " Restaurant — " + settings.headline;
+        $(".admin-bar h1").innerHTML = esc(settings.name) + " <span>Admin</span>";
+
+        var list = $("#hoursList");
+        list.innerHTML = "";
+        settings.hours.split("\n").forEach(function (line) {
+          if (!line.trim()) return;
+          var parts = line.split("|");
+          var li = document.createElement("li");
+          var a = document.createElement("span"); a.textContent = parts[0].trim();
+          var b = document.createElement("span"); b.textContent = (parts[1] || "").trim();
+          li.appendChild(a); li.appendChild(b); list.appendChild(li);
+        });
+      }
+
+      /* ---------- 6. PUBLIC SITE: menu ---------- */
+      function renderChips() {
+        var box = $("#chips");
+        box.innerHTML = "";
+        ["All"].concat(CATEGORIES).forEach(function (cat) {
+          var b = document.createElement("button");
+          b.type = "button"; b.className = "chip"; b.textContent = cat;
+          b.setAttribute("aria-pressed", String(cat === activeCat));
+          b.addEventListener("click", function () { activeCat = cat; renderChips(); renderMenu(); });
+          box.appendChild(b);
+        });
+      }
+
+      function renderMenu() {
+        var grid = $("#menuGrid");
+        var term = searchTerm.trim().toLowerCase();
+        var items = menu.filter(function (m) {
+          return (activeCat === "All" || m.cat === activeCat) && (!term || m.name.toLowerCase().indexOf(term) !== -1);
+        });
+        if (!items.length) {
+          grid.innerHTML = '<div class="empty-state"><strong>No dishes found</strong>Try another category or a different search word.</div>';
+          return;
+        }
+        grid.innerHTML = items.map(function (m, i) {
+          return '<article class="dish" style="animation-delay:' + (i * 40) + 'ms">' +
+            '<div class="dish-img"><img src="' + esc(m.img) + '" alt="' + esc(m.name) + '" data-label="' + esc(m.name) + '" loading="lazy"></div>' +
+            '<div class="dish-body"><span class="dish-cat">' + esc(m.cat) + '</span><h3>' + esc(m.name) + '</h3><p>' + esc(m.desc) + '</p>' +
+            '<div class="dish-foot"><span class="price">' + money(m.price) + '</span>' +
+            '<button class="btn btn-dark btn-small" data-add="' + esc(m.id) + '" aria-label="Add ' + esc(m.name) + ' to cart">Add to cart</button></div></div></article>';
+        }).join("");
+      }
+
+      $("#menuGrid").addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-add]");
+        if (!btn) return;
+        addToCart(btn.getAttribute("data-add"));
+      });
+      $("#searchInput").addEventListener("input", function (e) { searchTerm = e.target.value; renderMenu(); });
+
+      /* ---------- 7. CART ---------- */
+      function addToCart(id) {
+        var line = cart.filter(function (c) { return c.id === id; })[0];
+        if (line) line.qty += 1; else cart.push({ id: id, qty: 1 });
+        persistCart();
+        var item = findItem(id);
+        toast((item ? item.name : "Item") + " added to cart", "success");
+      }
+      function persistCart() { save(KEYS.cart, cart); renderCart(); }
+
+      // Remove cart lines whose menu item was deleted by the admin.
+      function cleanCart() { cart = cart.filter(function (c) { return findItem(c.id) && c.qty > 0; }); }
+
+      function calcTotals() {
+        var subtotal = cart.reduce(function (sum, c) { var it = findItem(c.id); return sum + (it ? it.price * c.qty : 0); }, 0);
+        var delivery = subtotal === 0 ? 0 : (subtotal >= FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE);
+        return { subtotal: subtotal, delivery: delivery, total: subtotal + delivery };
+      }
+
+      function renderCart() {
+        cleanCart();
+        var count = cart.reduce(function (n, c) { return n + c.qty; }, 0);
+        $("#cartCount").textContent = count;
+        var body = $("#cartBody");
+        var t = calcTotals();
+        $("#subtotal").textContent = money(t.subtotal);
+        $("#delivery").textContent = t.delivery === 0 && t.subtotal > 0 ? "Free" : money(t.delivery);
+        $("#total").textContent = money(t.total);
+        $(".mirror-subtotal").textContent = money(t.subtotal);
+        $(".mirror-delivery").textContent = t.delivery === 0 && t.subtotal > 0 ? "Free" : money(t.delivery);
+        $(".mirror-total").textContent = money(t.total);
+
+        if (!cart.length) {
+          body.innerHTML = '<div class="empty-state" style="padding:3rem 0"><strong>Your cart is empty</strong>Add a dish from the menu to get started.</div>';
+          $("#checkoutBtn").disabled = true; $("#clearCartBtn").disabled = true;
+          return;
+        }
+        $("#checkoutBtn").disabled = false; $("#clearCartBtn").disabled = false;
+        body.innerHTML = cart.map(function (c) {
+          var it = findItem(c.id);
+          return '<div class="cart-item">' +
+            '<img src="' + esc(it.img) + '" alt="" data-label="' + esc(it.name) + '">' +
+            '<div><h4>' + esc(it.name) + '</h4><small>' + money(it.price) + ' each</small>' +
+            '<div class="qty"><button data-dec="' + esc(c.id) + '" aria-label="Decrease quantity of ' + esc(it.name) + '">−</button>' +
+            '<output aria-live="polite">' + c.qty + '</output>' +
+            '<button data-inc="' + esc(c.id) + '" aria-label="Increase quantity of ' + esc(it.name) + '">+</button></div></div>' +
+            '<div class="line-total">' + money(it.price * c.qty) + '<br><button class="remove-btn" data-rm="' + esc(c.id) + '" aria-label="Remove ' + esc(it.name) + '">Remove</button></div></div>';
+        }).join("");
+      }
+
+      $("#cartBody").addEventListener("click", function (e) {
+        var inc = e.target.closest("[data-inc]"), dec = e.target.closest("[data-dec]"), rm = e.target.closest("[data-rm]");
+        if (inc) { cart.filter(function (c) { return c.id === inc.dataset.inc; })[0].qty += 1; }
+        else if (dec) {
+          var l = cart.filter(function (c) { return c.id === dec.dataset.dec; })[0];
+          l.qty -= 1;
+          if (l.qty <= 0) cart = cart.filter(function (c) { return c !== l; });
+        } else if (rm) { cart = cart.filter(function (c) { return c.id !== rm.dataset.rm; }); }
+        else return;
+        persistCart();
+      });
+      $("#clearCartBtn").addEventListener("click", function () { cart = []; persistCart(); toast("Cart cleared"); });
+
+      /* ---------- 8. CART DRAWER open/close + steps ---------- */
+      var lastFocus = null;
+      function showStep(name) {
+        $("#stepCart").style.display = name === "cart" ? "flex" : "none";
+        $("#stepCheckout").style.display = name === "checkout" ? "flex" : "none";
+        $("#stepCheckout").hidden = name !== "checkout";
+        $("#stepConfirm").style.display = name === "confirm" ? "flex" : "none";
+        $("#stepConfirm").hidden = name !== "confirm";
+        $("#drawerTitle").textContent = name === "cart" ? "Your cart" : name === "checkout" ? "Demo checkout" : "Demo order placed";
+      }
+      function openDrawer() {
+        lastFocus = document.activeElement;
+        showStep("cart"); renderCart();
+        $("#drawer").classList.add("open"); $("#overlay").classList.add("show");
+        $("#drawer").setAttribute("aria-hidden", "false");
+        $("#closeCartBtn").focus();
+      }
+      function closeDrawer() {
+        $("#drawer").classList.remove("open"); $("#overlay").classList.remove("show");
+        $("#drawer").setAttribute("aria-hidden", "true");
+        if (lastFocus && lastFocus.focus) lastFocus.focus();
+      }
+      $("#openCartBtn").addEventListener("click", openDrawer);
+      $("#closeCartBtn").addEventListener("click", closeDrawer);
+      $("#overlay").addEventListener("click", closeDrawer);
+      $("#doneBtn").addEventListener("click", function () { closeDrawer(); location.hash = "#menu"; });
+      $("#checkoutBtn").addEventListener("click", function () { if (cart.length) showStep("checkout"); $("#cName").focus(); });
+      $("#backToCartBtn").addEventListener("click", function () { showStep("cart"); });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          if ($("#drawer").classList.contains("open")) closeDrawer();
+          if (navOpen) toggleNav(false);
+        }
+      });
+
+      // Keep keyboard focus inside the open drawer (accessibility).
+      $("#drawer").addEventListener("keydown", function (e) {
+        if (e.key !== "Tab") return;
+        var f = $$("button, input, textarea, a[href]", $("#drawer")).filter(function (el) { return !el.disabled && el.offsetParent !== null; });
+        if (!f.length) return;
+        var first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      });
+
+      /* ---------- 9. DEMO CHECKOUT ---------- */
+      function setErr(inputId, errId, msg) {
+        $("#" + errId).textContent = msg;
+        $("#" + inputId).setAttribute("aria-invalid", msg ? "true" : "false");
+        return !msg;
+      }
+      $("#stepCheckout").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var name = $("#cName").value.trim(), phone = $("#cPhone").value.trim(), address = $("#cAddress").value.trim();
+        var ok = true;
+        ok = setErr("cName", "cNameErr", name.length < 2 ? "Please enter your full name (at least 2 characters)." : "") && ok;
+        ok = setErr("cPhone", "cPhoneErr", !/^\+?[\d\s()\-]{7,20}$/.test(phone) || phone.replace(/\D/g, "").length < 7 ? "Please enter a valid phone number (digits, spaces, + ( ) - allowed)." : "") && ok;
+        ok = setErr("cAddress", "cAddressErr", address.length < 6 ? "Please enter your delivery address (at least 6 characters)." : "") && ok;
+        if (!cart.length) { toast("Your cart is empty.", "error"); showStep("cart"); return; }
+        if (!ok) { toast("Please fix the highlighted fields.", "error"); return; }
+
+        var t = calcTotals();
+        var order = {
+          id: "DEMO-" + Date.now().toString(36).toUpperCase(),
+          date: new Date().toISOString(),
+          customer: name,
+          phone: phone,
+          address: address,
+          items: cart.map(function (c) {
+            var it = findItem(c.id);
+            return { name: it.name, price: it.price, qty: c.qty };
+          }),
+          subtotal: t.subtotal,
+          delivery: t.delivery,
+          total: t.total,
+          status: "new"
+        };
+        orders.unshift(order);
+        // Автоматично зберігаємо профіль
+        const profile = {
+          name: name,
+          phone: phone
+        };
+        localStorage.setItem("noir_profile", JSON.stringify(profile));
+        save(KEYS.orders, orders);
+        cart = []; save(KEYS.cart, cart); renderCart();
+        $("#stepCheckout").reset();
+
+        $("#confirmBody").innerHTML =
+          '<div class="confirm-box"><div class="tick" aria-hidden="true">✓</div><h3>Thank you, ' + esc(name.split(" ")[0]) + '!</h3>' +
+          '<div class="notice ok"><strong>This is a demo.</strong> No real order was sent to a restaurant and no payment was taken.</div>' +
+          '<div class="receipt"><strong>Order ' + esc(order.id) + '</strong>' +
+          order.items.map(function (i) { return '<div><span>' + i.qty + ' × ' + esc(i.name) + '</span><span>' + money(i.price * i.qty) + '</span></div>'; }).join("") +
+          '<hr style="border:0;border-top:1px dashed #cfc4af;margin:.6rem 0">' +
+          '<div><span>Delivery</span><span>' + (order.delivery ? money(order.delivery) : "Free") + '</span></div>' +
+          '<div><strong>Total</strong><strong>' + money(order.total) + '</strong></div></div>' +
+          '<p style="color:var(--muted-light);font-size:.85rem">Saved locally in this browser only. You can view it in the Admin dashboard.</p></div>';
+        showStep("confirm");
+      });
+
+      /* ---------- 10. MOBILE NAVIGATION ---------- */
+      var navOpen = false;
+      function toggleNav(open) {
+        navOpen = open;
+        $("#navLinks").classList.toggle("open", open);
+        $("#menuToggle").setAttribute("aria-expanded", String(open));
+      }
+      $("#menuToggle").addEventListener("click", function () { toggleNav(!navOpen); });
+      $$("#navLinks a").forEach(function (a) { a.addEventListener("click", function () { toggleNav(false); }); });
+      $("#heroOrder").addEventListener("click", function () { /* scrolls to the menu via the link */ });
+
+      /* ---------- 11. VIEW SWITCHING (website <-> admin) ---------- */
+      function showAdmin() {
+        $("#site").hidden = true; $("#admin").hidden = false;
+        closeDrawer();
+        var logged = sessionStorage.getItem("noir_admin") === "1";
+        $("#loginCard").hidden = logged; $("#dashboard").hidden = !logged; $("#logoutBtn").hidden = !logged;
+        if (logged) renderAdmin();
+        window.scrollTo(0, 0);
+      }
+      function showSite() {
+        $("#admin").hidden = true; $("#site").hidden = false;
+        applySettings(); renderMenu(); renderCart();
+      }
+      function route() {
+        if (location.hash === "#admin") showAdmin(); else if (!$("#admin").hidden) showSite();
+      }
+      $("#adminBtn").addEventListener("click", function () { location.hash = "#admin"; });
+      $("#footerAdmin").addEventListener("click", function () { location.hash = "#admin"; });
+      $("#backToSiteBtn").addEventListener("click", function () { location.hash = "#home"; });
+      window.addEventListener("hashchange", route);
+
+      /* ---------- 12. ADMIN: login ---------- */
+      $("#demoPw").textContent = ADMIN_PASSWORD;
+      $("#loginForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+        if ($("#adminPw").value === ADMIN_PASSWORD) {
+          sessionStorage.setItem("noir_admin", "1");
+          $("#adminPw").value = ""; $("#loginErr").textContent = "";
+          showAdmin();
+          toast("Logged in (demo)", "success");
+        } else {
+          $("#loginErr").textContent = "Wrong password. Use the demo password shown above.";
+          $("#adminPw").setAttribute("aria-invalid", "true");
+        }
+      });
+      $("#logoutBtn").addEventListener("click", function () {
+        sessionStorage.removeItem("noir_admin"); showAdmin(); toast("Logged out");
+      });
+
+      /* ---------- 13. ADMIN: tabs ---------- */
+      function selectTab(name) {
+        $$(".tab").forEach(function (t) { t.setAttribute("aria-selected", String(t.dataset.tab === name)); });
+        $$("[data-panel]").forEach(function (p) { p.hidden = p.dataset.panel !== name; });
+      }
+      $$(".tab").forEach(function (t) { t.addEventListener("click", function () { selectTab(t.dataset.tab); }); });
+
+      function renderAdmin() { renderStats(); renderItemsTable(); fillInfoForm(); renderOrders(); }
+
+      /* ---------- 14. ADMIN: overview + orders ---------- */
+      function orderHtml(o) {
+        var status = o.status || "new";
+        var statusLabel = {
+          new: "New",
+          preparing: "Preparing",
+          delivered: "Delivered",
+          cancelled: "Cancelled"
+        }[status] || "New";
+        var statusClass = {
+          new: "status-new",
+          preparing: "status-preparing",
+          delivered: "status-delivered",
+          cancelled: "status-cancelled"
+        }[status] || "status-new";
+
+        return '<div class="order-card" data-id="' + esc(o.id) + '">' +
+          '<header>' +
+            '<strong>' + esc(o.id) + ' <span class="badge">Demo</span></strong>' +
+            '<span class="status-badge ' + statusClass + '">' + statusLabel + '</span>' +
+          '</header>' +
+          '<div>' + esc(o.customer) + ' · ' + esc(o.phone) + '</div>' +
+          '<div style="color:var(--muted-light);font-size:.88rem">' + esc(o.address) + '</div>' +
+          '<ul>' + o.items.map(function (i) {
+            return '<li>' + i.qty + ' × ' + esc(i.name) + ' — ' + money(i.price * i.qty) + '</li>';
+          }).join("") + '</ul>' +
+          '<div style="text-align:right;margin-top:.5rem"><strong>Total: ' + money(o.total) + '</strong></div>' +
+          '<div class="order-actions">' +
+            '<button class="btn btn-small btn-dark" data-status="preparing">Preparing</button>' +
+            '<button class="btn btn-small btn-dark" data-status="delivered">Delivered</button>' +
+            '<button class="btn btn-small btn-danger" data-status="cancelled">Cancel</button>' +
+          '</div>' +
+        '</div>';
+      }
+      function renderStats() {
+        var revenue = orders.reduce(function (s, o) { return s + o.total; }, 0);
+        var avg = orders.length ? revenue / orders.length : 0;
+        var counts = {};
+        orders.forEach(function (o) { o.items.forEach(function (i) { counts[i.name] = (counts[i.name] || 0) + i.qty; }); });
+        var top = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; })[0];
+        $("#statsBox").innerHTML =
+          '<div class="stat"><span>Demo orders</span><strong>' + orders.length + '</strong></div>' +
+          '<div class="stat"><span>Demo revenue</span><strong>' + money(revenue) + '</strong></div>' +
+          '<div class="stat"><span>Average order</span><strong>' + money(avg) + '</strong></div>' +
+          '<div class="stat"><span>Menu items</span><strong>' + menu.length + '</strong></div>' +
+          '<div class="stat"><span>Top dish</span><strong style="font-size:1.4rem">' + (top ? esc(top) : "—") + '</strong></div>';
+        $("#latestOrders").innerHTML = orders.length ? orders.slice(0, 3).map(orderHtml).join("") : '<div class="empty-state"><strong>No orders yet</strong>Place a demo order on the website and it will appear here.</div>';
+      }
+      function renderOrders() {
+        $("#ordersList").innerHTML = orders.length ? orders.map(orderHtml).join("") : '<div class="empty-state"><strong>No orders yet</strong>Place a demo order on the website and it will appear here.</div>';
+      }
+
+      // Зміна статусу замовлення
+      document.addEventListener("click", function (e) {
+        var btn = e.target.closest("[data-status]");
+        if (!btn) return;
+
+        var card = btn.closest(".order-card");
+        if (!card) return;
+
+        var orderId = card.dataset.id;
+        var newStatus = btn.dataset.status;
+        var order = orders.find(function (o) { return o.id === orderId; });
+        if (order) {
+          order.status = newStatus;
+          save(KEYS.orders, orders);
+          renderOrders();
+          renderStats();
+          toast("Status updated to " + newStatus, "success");
+        }
+      });
+
+      /* ---------- 15. ADMIN: menu items ---------- */
+      $("#iCat").innerHTML = CATEGORIES.map(function (c) { return '<option>' + c + '</option>'; }).join("");
+
+      function renderItemsTable() {
+        var body = $("#itemsTable");
+        if (!menu.length) { body.innerHTML = '<tr><td colspan="5"><div class="empty-state"><strong>The menu is empty</strong>Add your first item above.</div></td></tr>'; return; }
+        body.innerHTML = menu.map(function (m) {
+          return '<tr><td><img src="' + esc(m.img) + '" alt="" data-label="' + esc(m.name) + '"></td><td><strong>' + esc(m.name) + '</strong></td><td>' + esc(m.cat) + '</td><td>' + money(m.price) + '</td>' +
+            '<td><div class="row-actions"><button class="btn btn-dark btn-small" data-edit="' + esc(m.id) + '" aria-label="Edit ' + esc(m.name) + '">Edit</button>' +
+            '<button class="btn btn-danger btn-small" data-del="' + esc(m.id) + '" aria-label="Delete ' + esc(m.name) + '">Delete</button></div></td></tr>';
+        }).join("");
+      }
+      function resetItemForm() {
+        $("#itemForm").reset(); $("#iId").value = ""; $("#itemErr").textContent = "";
+        $("#itemFormTitle").textContent = "Add a menu item"; $("#itemSubmit").textContent = "Add item"; $("#itemCancel").hidden = true;
+      }
+      $("#itemCancel").addEventListener("click", resetItemForm);
+
+      $("#itemsTable").addEventListener("click", function (e) {
+        var ed = e.target.closest("[data-edit]"), del = e.target.closest("[data-del]");
+        if (ed) {
+          var m = findItem(ed.dataset.edit);
+          $("#iId").value = m.id; $("#iName").value = m.name; $("#iCat").value = m.cat;
+          $("#iPrice").value = m.price; $("#iImg").value = m.img; $("#iDesc").value = m.desc;
+          $("#itemFormTitle").textContent = "Edit: " + m.name; $("#itemSubmit").textContent = "Save changes"; $("#itemCancel").hidden = false;
+          $("#itemForm").scrollIntoView({ behavior: "smooth", block: "center" }); $("#iName").focus();
+        } else if (del) {
+          var item = findItem(del.dataset.del);
+          confirmBox("Delete item?", 'Delete "' + item.name + '" from the menu? This cannot be undone.', function () {
+            menu = menu.filter(function (x) { return x.id !== item.id; });
+            if (save(KEYS.menu, menu)) toast("Item deleted", "success");
+            renderAdmin(); cleanCart(); save(KEYS.cart, cart);
+          });
+        }
+      });
+
+      $("#itemForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var id = $("#iId").value, name = $("#iName").value.trim(), cat = $("#iCat").value;
+        var price = parseFloat($("#iPrice").value), img = $("#iImg").value.trim(), desc = $("#iDesc").value.trim();
+        var err = "";
+        if (name.length < 2) err = "Please enter a name (at least 2 characters).";
+        else if (!(price > 0) || price > 9999) err = "Please enter a price greater than 0.";
+        else if (desc.length < 5) err = "Please enter a short description (at least 5 characters).";
+        else if (img && !/^https?:\/\/.+/i.test(img)) err = "Image URL must start with http:// or https:// (or leave it empty).";
+        if (err) { $("#itemErr").textContent = err; toast(err, "error"); return; }
+        $("#itemErr").textContent = "";
+        price = Math.round(price * 100) / 100;
+        if (!img) img = fallbackImg(name);
+
+        if (id) {
+          var m = findItem(id);
+          m.name = name; m.cat = cat; m.price = price; m.img = img; m.desc = desc;
+        } else {
+          menu.push({ id: "i" + Date.now().toString(36), name: name, cat: cat, price: price, img: img, desc: desc });
+        }
+        if (save(KEYS.menu, menu)) toast(id ? "Item updated" : "Item added", "success");
+        resetItemForm(); renderAdmin(); renderCart();
+      });
+
+      /* ---------- 16. ADMIN: restaurant info ---------- */
+      function fillInfoForm() {
+        $("#sName").value = settings.name; $("#sPhone").value = settings.phone; $("#sEmail").value = settings.email;
+        $("#sAddress").value = settings.address; $("#sHeadline").value = settings.headline; $("#sDesc").value = settings.description;
+        $("#sAbout").value = settings.about; $("#sHours").value = settings.hours;
+      }
+      $("#infoForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var v = {
+          name: $("#sName").value.trim(), phone: $("#sPhone").value.trim(), email: $("#sEmail").value.trim(),
+          address: $("#sAddress").value.trim(), headline: $("#sHeadline").value.trim(), description: $("#sDesc").value.trim(),
+          about: $("#sAbout").value.trim(), hours: $("#sHours").value.trim()
+        };
+        var err = "";
+        if (!v.name) err = "Restaurant name cannot be empty.";
+        else if (!v.headline) err = "Headline cannot be empty.";
+        else if (!v.description) err = "Description cannot be empty.";
+        else if (!v.address) err = "Address cannot be empty.";
+        else if (!v.phone) err = "Phone cannot be empty.";
+        else if (v.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) err = "Please enter a valid email address.";
+        if (err) { $("#infoErr").textContent = err; toast(err, "error"); return; }
+        $("#infoErr").textContent = "";
+        settings = Object.assign({}, settings, v);
+        if (save(KEYS.settings, settings)) toast("Restaurant information saved", "success");
+        applySettings();
+      });
+
+      /* ---------- 17. ADMIN: confirm dialog + reset ---------- */
+      var dlgAction = null;
+      function confirmBox(title, text, onYes) {
+        $("#dlgTitle").textContent = title; $("#dlgText").textContent = text; dlgAction = onYes;
+        var dlg = $("#confirmDialog");
+        if (typeof dlg.showModal === "function") dlg.showModal();
+        else if (window.confirm(text)) { onYes(); }   // very old browsers
+      }
+      $("#dlgYes").addEventListener("click", function () { $("#confirmDialog").close(); if (dlgAction) dlgAction(); dlgAction = null; });
+      $("#dlgNo").addEventListener("click", function () { $("#confirmDialog").close(); dlgAction = null; });
+
+      $("#resetBtn").addEventListener("click", function () {
+        confirmBox("Reset demo data?", "This restores the original menu and information, and deletes all demo orders and the cart in this browser.", function () {
+          Object.keys(KEYS).forEach(function (k) { try { localStorage.removeItem(KEYS[k]); } catch (e) {} });
+          settings = clone(DEFAULT_SETTINGS); menu = clone(DEFAULT_MENU); cart = []; orders = [];
+          resetItemForm(); applySettings(); renderChips(); renderMenu(); renderCart(); renderAdmin();
+          toast("Demo data has been reset", "success");
+        });
+      });
+
+      /* ---------- 18. START THE APP ---------- */
+      $("#year").textContent = new Date().getFullYear();
+      applySettings(); renderChips(); renderMenu(); renderCart();
+      route();
+    })();
+  </script>
+<!-- ===== MY ORDERS / PROFILE DRAWER ===== -->
+<div class="overlay" id="profileOverlay"></div>
+
+<aside class="drawer" id="profileDrawer" aria-hidden="true">
+  <div class="drawer-head">
+    <h2 id="profileDrawerTitle">My Orders</h2>
+    <button class="drawer-close" id="closeProfileBtn" aria-label="Close">×</button>
+  </div>
+
+  <div class="drawer-body" id="profileBody">
+    <div id="profileFormWrap">
+      <p style="color: var(--muted-light); margin-bottom: 1.2rem; font-size: 0.95rem;">
+        Save your details so you can quickly reorder and see your order history.
+      </p>
+
+      <div class="field">
+        <label for="profName">Full name</label>
+        <input type="text" id="profName" placeholder="John Smith" maxlength="60">
+        <div class="error-msg" id="profNameErr"></div>
+      </div>
+
+      <div class="field">
+        <label for="profPhone">Phone</label>
+        <input type="tel" id="profPhone" placeholder="+380..." maxlength="20">
+        <div class="error-msg" id="profPhoneErr"></div>
+      </div>
+
+      <button class="btn btn-gold" id="saveProfileBtn" style="width:100%; margin-top:0.5rem;">Save profile</button>
+    </div>
+
+    <div id="ordersListWrap" hidden>
+      <div class="profile-header">
+        <div>
+          <strong id="profileNameDisplay"></strong>
+          <div style="color:var(--muted-light); font-size:0.9rem" id="profilePhoneDisplay"></div>
+        </div>
+        <button class="btn btn-small btn-outline" id="editProfileBtn">Edit</button>
+      </div>
+
+      <div id="userOrdersList"></div>
+
+      <div id="noOrders" class="empty-state" hidden>
+        <strong>No orders yet</strong>
+        <p>When you place an order, it will appear here.</p>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ===== DISH MODAL ===== -->
+<div id="dish-modal" class="dish-modal">
+  <div class="dish-modal-backdrop"></div>
+  <div class="dish-modal-content">
+    <button class="dish-modal-close" id="dish-modal-close">×</button>
+    
+    <div class="dish-modal-img">
+      <img id="modal-img" src="" alt="">
+    </div>
+    
+    <div class="dish-modal-info">
+      <span class="modal-cat" id="modal-cat"></span>
+      <h2 id="modal-name"></h2>
+      <p id="modal-desc"></p>
+      
+      <div class="modal-ingredients" id="modal-ingredients"></div>
+      
+      <div class="modal-footer">
+        <span class="modal-price" id="modal-price"></span>
+        <button class="btn btn-gold" id="modal-add-btn">Додати до замовлення</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="burger-scroll.js"></script>
+<script src="profile-orders.js"></script>
+</body>
+</html>
